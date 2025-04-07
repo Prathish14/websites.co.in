@@ -3,8 +3,10 @@ from fastapi_cache.backends.redis import RedisBackend
 from fastapi_cache.decorator import cache
 from redis import Redis
 from fastapi import HTTPException
+import os
 
-redis = Redis.from_url("redis://localhost:6379/0")
+redis_connection_string = os.environ.get("REDIS_CONNECTION_STRING")
+redis = Redis.from_url(redis_connection_string)
 
 class RedisManaged:
 
@@ -38,26 +40,90 @@ class RedisManaged:
     def get_user_ai_credits(user_id: str):
         key = f"local:ai_credits_of_user:{user_id}"
         value = redis.get(name=key)
-        return value
+        return int(value.decode())
 
     @staticmethod
-    def increment_user_ai_credits(user_id: str, incrment_value: int):
+    def decrement_user_ai_credits(user_id: str, decrment_value: int):
         key = f"local:ai_credits_of_user:{user_id}"
         value = redis.get(name=key)
-        new_incremented_value = value + incrment_value
+        new_incremented_value = int(value.decode()) - decrment_value
         redis.set(name=key, value=new_incremented_value)
         return new_incremented_value
     
-    """@staticmethod
-    def check_user_has_suffiecient_ai_credits(user_id: str):
-        user_ai_credits = RedisManaged.get_user_ai_credits(user_id=user_id)
+    @staticmethod
+    def check_ai_rate_limit():
+        key1 = f"local:ai_rate_checker:Flash-Lite:RPM" #30		
+        key2 = f"local:ai_rate_checker:Flash-Lite:TPM" #1000000
+        key3 = f"local:ai_rate_checker:Flash-Lite:RPD" #1500
 
-        if user_ai_credits <= 10:
-            message = f'User dont have suffeicient credits'
+        value1 = redis.get(name=key1)
+        value2 = redis.get(name=key2)
+        value3 = redis.get(name=key3)
+
+        if value1 and int(value1.decode()) > 30:
+            message = f'rate limit reached, call after 1 min'
             raise HTTPException(
-                status_code=200,
+                status_code=429,
+                detail=message,
+            )
+        
+        if value2 and int(value2.decode()) > 1000000:
+            message = f'rate limit reached, call after 1 min'
+            raise HTTPException(
+                status_code=429,
                 detail=message,
             )
 
-"""
+        if value3 and int(value3.decode()) > 1500:
+            message = f'rate limit reached, call after a day'
+            raise HTTPException(
+                status_code=429,
+                detail=message,
+            )
     
+    @staticmethod
+    def set_ai_rate_limit(rpm: int = None, tpm: int = None, rpd: int = None):
+        key1 = f"local:ai_rate_checker:Flash-Lite:RPM" #30		
+        key2 = f"local:ai_rate_checker:Flash-Lite:TPM" #1000000
+        key3 = f"local:ai_rate_checker:Flash-Lite:RPD" #1500
+
+        if rpm:
+            value1 = redis.get(name=key1)
+            if value1 is None:
+                redis.set(name=key1, value=rpm, ex=60)
+            else:
+                if int(value1.decode())+rpm > 30:
+                    message = f'rate limit reached, call after 1 min'
+                    raise HTTPException(
+                        status_code=429,
+                        detail=message,
+                    )
+                redis.set(name=key1, value=int(value1.decode())+rpm)
+        
+        if tpm:
+            value2 = redis.get(name=key2)
+            if value2 is None:
+                redis.set(name=key2, value=tpm, ex=60)
+            else:
+                if int(value2.decode())+tpm > 1000000:
+                    message = f'rate limit reached, call after 1 min'
+                    raise HTTPException(
+                        status_code=429,
+                        detail=message,
+                    )
+                redis.set(name=key2, value=int(value2.decode())+tpm)
+
+
+        if rpd:
+            value3 = redis.get(name=key3)
+            if value3 is None:
+                redis.set(name=key3, value=rpd, ex=86400)
+            else:
+                if int(value3.decode())+rpd > 1500:
+                    message = f'rate limit reached, call after a day'
+                    raise HTTPException(
+                        status_code=429,
+                        detail=message,
+                    )
+
+                redis.set(name=key3, value=int(value3.decode())+rpd)

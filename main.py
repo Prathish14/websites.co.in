@@ -9,17 +9,21 @@ from models.user import UserBase
 
 from redis import asyncio as aioredis
 import uvicorn
+import os
+
+redis_connection_string = os.environ.get("REDIS_CONNECTION_STRING")
+database_connection_string_sync = os.environ.get("DATABASE_CONNECTION_STRING_SYNC")
 
 
 engine = create_engine(
-    f'postgresql://postgres.qfeyjfwcxufgbmltgfkn:McFykkr?Ex~tRn8@aws-0-ap-south-1.pooler.supabase.com:5432/postgres', echo="debug")
+    database_connection_string_sync, echo="debug")
 
-UserBase.metadata.create_all(engine)
+#UserBase.metadata.create_all(engine)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    redis = aioredis.from_url("redis://localhost:6379/0")
+    redis = aioredis.from_url(redis_connection_string)
     FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
     yield
 
