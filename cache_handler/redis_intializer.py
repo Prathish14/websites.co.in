@@ -11,7 +11,7 @@ redis = Redis.from_url(redis_connection_string)
 class RedisManaged:
 
     @staticmethod
-    def check_rate_limit_of_user(user_id: str, max_count=5, expire=180):
+    def check_rate_limit_of_user(user_id: str, max_count=5, expire=60):
         key = f"local:rate_limit_of_user:{user_id}"
         value = int(redis.incr(key, amount=1))
 
@@ -40,6 +40,8 @@ class RedisManaged:
     def get_user_ai_credits(user_id: str):
         key = f"local:ai_credits_of_user:{user_id}"
         value = redis.get(name=key)
+        if not value:
+            return None
         return int(value.decode())
 
     @staticmethod
@@ -90,7 +92,9 @@ class RedisManaged:
         if rpm:
             value1 = redis.get(name=key1)
             if value1 is None:
-                redis.set(name=key1, value=rpm, ex=60)
+                value1 = int(redis.incr(key1, amount=rpm))
+                redis.expire(key1, 60)
+
             else:
                 if int(value1.decode())+rpm > 30:
                     message = f'rate limit reached, call after 1 min'
@@ -98,12 +102,13 @@ class RedisManaged:
                         status_code=429,
                         detail=message,
                     )
-                redis.set(name=key1, value=int(value1.decode())+rpm)
+                redis.incr(key1, amount=rpm)
         
         if tpm:
             value2 = redis.get(name=key2)
             if value2 is None:
-                redis.set(name=key2, value=tpm, ex=60)
+                value2 = int(redis.incr(key2, amount=tpm))
+                redis.expire(key2, 60)
             else:
                 if int(value2.decode())+tpm > 1000000:
                     message = f'rate limit reached, call after 1 min'
@@ -111,13 +116,14 @@ class RedisManaged:
                         status_code=429,
                         detail=message,
                     )
-                redis.set(name=key2, value=int(value2.decode())+tpm)
+                redis.incr(key2, amount=tpm)
 
 
         if rpd:
             value3 = redis.get(name=key3)
             if value3 is None:
-                redis.set(name=key3, value=rpd, ex=86400)
+                value3 = int(redis.incr(key3, amount=rpd))
+                redis.expire(key3, 86400)
             else:
                 if int(value3.decode())+rpd > 1500:
                     message = f'rate limit reached, call after a day'
@@ -125,5 +131,4 @@ class RedisManaged:
                         status_code=429,
                         detail=message,
                     )
-
-                redis.set(name=key3, value=int(value3.decode())+rpd)
+                redis.incr(key3, amount=rpd)

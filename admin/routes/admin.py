@@ -34,7 +34,7 @@ async def get_ai_based_suggestion_for_website(
                 if not user_ai_credts:
                     user_ai_credts = RedisManaged.set_user_ai_credits(user_id=user.id, ai_credits=user.ai_credits)
                 
-                if user_ai_credts <= 10:
+                if user_ai_credts < 10:
                     message = f'User dont have suffeicient credits'
                     raise HTTPException(
                         status_code=200,
@@ -62,5 +62,5 @@ async def get_ai_based_suggestion_for_website(
         return JSONResponse(content={"ok": False, "message": h.detail}, status_code=h.status_code)
     except Exception as e:
         return JSONResponse(content={"ok": False, "message": e.__str__()}, status_code=500)
-    return JSONResponse(content={"ok": True, "type_of_output": type_of_input, "data": response},status_code=200)
+    return JSONResponse(content={"ok": True, "type_of_suggestion": type_of_input, "data": response},status_code=200)
 

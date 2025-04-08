@@ -26,8 +26,11 @@ class GeminiApiService:
                     - The output must be directly parsable by standard JSON decoders (e.g., Python's `json.loads()`).
 
                     - If `type_of_answer` is "content":
-                    - Output only plain, human-readable text content.
-                    - Do NOT include JSON, markdown, or any formatting — just clean text like headlines, taglines, or short paragraphs.
+                    - Output only clean, human-readable text.
+                    - This should be natural language content suitable for end users — such as headlines, taglines, product descriptions, CTA button labels, testimonials, or short marketing blurbs — depending on the user's request.
+                    - The response must not contain any code, HTML, JSON, or markdown formatting.
+                    - The output should feel like it's written by a copywriter for a real website, concise and contextually relevant to the UI.
+                    - Avoid any system messages, technical formatting, or instructions — only the pure content that would appear visibly in the UI.
 
                     Your response must fully reflect the user's request based on these two inputs, and follow the specified format precisely.
                     """
